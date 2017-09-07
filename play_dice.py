@@ -80,11 +80,12 @@ while True:
 	if play == 'n':
 		break
 	elif play != 'y':
+		print('Invalid input. Please try again.')
 		continue
 
 	# Round 1 of the game
 
-	print(Back.GREEN + Fore.BLACK + '-- Round 1 --')
+	print(Back.GREEN + Fore.BLACK + '\n---------- Round 1 ----------\n')
 	sleep(delay)
 	print(Fore.GREEN + '<<Round 1 betting begins>>')
 
@@ -120,7 +121,7 @@ while True:
 	# Round 2 of the game.
 
 	sleep(delay)
-	print(Back.GREEN + Fore.BLACK + '-- Round 2 --')
+	print(Back.GREEN + Fore.BLACK + '\n---------- Round 2 ----------\n')
 
 	show_capital(capital)
 
@@ -217,7 +218,7 @@ while True:
 	# Evaluate scores and settle bets
 
 	sleep(delay)
-	print(Fore.BLACK + Back.GREEN + '-- Results --')
+	print(Fore.BLACK + Back.GREEN + '\n---------- Results ----------\n')
 	
 	score_p = hand_p.score()
 	score_c = hand_c.score()
