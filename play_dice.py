@@ -32,6 +32,9 @@ def take_bet(capital, played=True, second_bet=False):
 			if bet > capital:
 				print('You can\'t afford that honey. I\'ll ask again...')
 				continue
+			if bet == 0 and not second_bet:
+				print('You must bet a nonzero amount in order to play. Let\'s try again...')
+				continue
 			else:
 				break
 		else:
@@ -144,11 +147,12 @@ while True:
 	# Compute possible loss for computer and raise bet if potentially profitable for computer (round 2)
 	
 	p_loss_c = dice.p_loss_max(hand_c, to_roll_c, hand_p)
-	if p_loss_c > 0.75:
+	if p_loss_c > 0.8:
 		print(Style.DIM + Fore.GREEN + 'Please wait, this step can take a minute or two.')
 		opt_roll_c = dice.optimize(hand_c, hand_p) # If greedy choice is bad ( > 75% chance of lossing) use true optimizer
 		to_roll_c = opt_roll_c['Roll']
 		p_loss_c = opt_roll_c['P_loss']
+	#print('Maximum probability of winning: ' + str(p_loss_c))
 
 	if capital > 0:
 		if p_loss_c < 0.5:
@@ -159,9 +163,10 @@ while True:
 		
 			if to_raise_c > 0:
 				sleep(delay)
-				lion = input('Computer has raised the bet by ' + str(to_raise_c) + ' units, are you willing to match? (y/n) \n(Saying \'n\' means forfeiting your current bet): ').lower()
+				print('Computer has raised the bet by ' + Fore.GREEN + Style.BRIGHT + str(to_raise_c) + Style.RESET_ALL + ' units.')
+				lion = input('Are you willing to match? Saying \'n\' means forfeiting your current bet (y/n): ').lower()
 				if lion == 'n':
-					print('You chicken! You have ' + Back.RED + Fore.WHITE + Style.BRIGHT + 'lost' + Style.RESET_ALL + '.')
+					print('You chicken! You have ' + Back.RED + Fore.WHITE + Style.BRIGHT + 'LOST' + Style.RESET_ALL + '.')
 					show_capital(capital)
 					continue
 				elif lion == 'y':
@@ -223,7 +228,7 @@ while True:
 	score_p = hand_p.score()
 	score_c = hand_c.score()
 	sleep(delay)
-	print('Your score: ' + str(score_p))
+	print('      Your score: ' + str(score_p))
 	print('Computer\'s score: ' + str(score_c))
 	
 	sleep(delay)

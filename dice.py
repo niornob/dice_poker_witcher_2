@@ -73,7 +73,9 @@ class Score:
         return self.state, self.face_value
         
     def __repr__(self):
-        return self.state + ' - ' + 'Rank: ' + str(self.rank()) + ', Face value: ' + str(self.face_value)
+        len_offset = len('Five High Straight') - len(self.state)
+        len_offset = ''.join([' ']*len_offset)
+        return len_offset + self.state + ' - ' + 'Rank: ' + str(self.rank()) + ', Face value: ' + str(self.face_value)
     
     def __lt__(self, other):
         return self.rank_fine() < other.rank_fine()
@@ -329,7 +331,15 @@ y_nonAnom = np.array(rankVprob_nonAnom.values)
 
 # Though we said that the function we are looking for looks exponential, for approximation purposes a cubic
 # interpolation (or even a quadratic one) works just fine.
-pi = InterpolatedUnivariateSpline(x_nonAnom, y_nonAnom, k=3)
+rank_fines = np.vectorize(lambda x: x.rank_fine())(rankVprob['Score'])
+x_shift = []
+for i in range(9):
+    mean_i = i
+    slice_i = rank_fines[np.vectorize(bool)(np.array(rank_fines >= i) * np.array(rank_fines < i+1))]
+    if len(slice_i) > 0:
+        mean_i = np.mean(slice_i)
+    x_shift.append(mean_i - i)
+pi = InterpolatedUnivariateSpline(x_nonAnom+np.array(x_shift)[mask], y_nonAnom, k=3)
 # pi as defined in the above line will be used later, so it's crucial to keep this definition intact
 # in form and substance throughout the notebook.
 
@@ -361,7 +371,7 @@ def phi(rank):
     # We are going to define phi with a slight modification, we will insert a small number in the denominator
     # in addition to pi. The reason is that this allows us to avoid erratic behavious near the highest f-values
     # that would otherwise be cause by tiny outputs of pi.
-    epsilon = 0.001
+    epsilon = 0.0001
     
     return 1/(pi(rank)+epsilon)
 
@@ -371,7 +381,7 @@ def phi(rank):
 # In[14]:
 
 if(__name__ == '__main__'):
-    x = np.linspace(0, 9, num=50, endpoint=True)
+    x = np.linspace(0, 8.47, num=50, endpoint=True)
     plt.plot(x, np.vectorize(phi)(x))
     plt.xticks(range(0,10))
     plt.xlabel('$x$', fontsize=13)
@@ -382,20 +392,20 @@ if(__name__ == '__main__'):
 # Having defined a measure of strength from the $f$-value of a hand $h$, we can proceed with our attempt at defining a metric for the choices of subsets $s \subseteq h$ to roll. The metric we want should have the following interpretation:
 # > The value of the metric for a subset $s \subseteq h$ should give us a measure of by how much we can expect the $f$-value of the hand to change if we roll the dices in $s$.
 # 
-# To express whether the $f$-value $f(h_1)$ is better or worse than the $f$-value $f(h_2)$ we can use the [sign function](https://en.wikipedia.org/wiki/Sign_function) $\mathrm{sgn}(f(h_2) - f(h_1))$. Now, if for a hand $h$ and a subset $s \subseteq h$, we denote by $R_h(s) \subseteq H$ the set of all possible outcomes after rolling the dices in $s$, then a good metric value for the subset $s$ can be something like the following expectation value:
-# $$ \mathbb E^\rho_{\xi \in f(R_h(s))} \big(\mathrm{sgn}(\xi - f(h))\big)\,, $$
+# If for a hand $h$ and a subset $s \subseteq h$, we denote by $R_h(s) \subseteq H$ the set of all possible outcomes after rolling the dices in $s$, then a good metric value for the subset $s$ can be something like the following expectation value:
+# $$ \mathbb E^\rho_{\xi \in f(R_h(s))} \big(\xi - f(h)\big)\,, $$
 # where $\rho$ denotes a choice of probability distribution on the domain $f(R_h(s))$. Our goal then is to make a judicious choice of the distribution $\rho$ which will in general depend on both $h$ and $s$.
 # 
-# Note that, $\phi$ allows us to compare two $f$-values relative to each other, i.e., for two hands $h_1$ and $h_2$, the ratio $\frac{\phi(f(h_1))}{\phi(f(h_2))}$ tells us how much stronger the hand $h_1$ is compared to $h_2$ and, roughly speaking, this varies exponentially with $f(h_1)$. Therefore this ratio is a good weight to assign to $f(h_1)$ relative to $f(h_2)$, except, for weights less than 1, we still wish to view them as exponentially larger than 1 but with a negative sign. To that end we dfine:
-# $$ \forall x, y \in \mathbb R\, \quad \chi_y(x) := y^{\theta(-x)} x\,, \qquad \forall h, \in H,\, y \in \mathbb R\; \mbox{and}\; \xi \in H_f, \quad \phi_{h,y}(\xi) := \left(\frac{\phi(\xi)}{\phi(f(h))} \right)^{\chi\left(\mathrm{sgn}\left(\xi-f(h)\right)\right)}\,,$$
+# Note that, $\phi$ allows us to compare two $f$-values relative to each other, i.e., for two hands $h_1$ and $h_2$, the ratio $\frac{\phi(f(h_1))}{\phi(f(h_2))}$ tells us how much stronger the hand $h_1$ is compared to $h_2$. Therefore this ratio is a good weight to assign to $f(h_1)$ relative to $f(h_2)$, except, for weights less than 1, we still wish to view them as exponentially larger than 1 but with a negative sign. To that end we dfine:
+# $$ \forall h, \in H\; \mbox{and}\; \xi \in H_f, \quad \phi_{h}(\xi) := \left(\frac{\phi(\xi)}{\phi(f(h))} \right)^{\mathrm{sgn}\left(\xi-f(h)\right)}\,,$$
 # We should normalize this weight, let us introduce a notation for normalization: for any function $\psi: A \to B$ between any two sets $A$ and $B$, given a subset $C \subseteq A$, we denote by $N_C(\psi)$ a normalized function $N_C(\psi) : C \to B$, such that:
 # $$ \forall \xi \in C\,, \quad N_C(\psi)(\xi) := \frac{\psi(\xi)}{\sum_{\zeta \in C} \psi(\zeta)}\,. $$
-# Our normalized weight now becomes $N_{f(R_h(s))}(\phi_{h,y})$.
+# Our normalized weight now becomes $N_{f(R_h(s))}(\phi_{h})$.
 # 
-# We have an interesting distribution in $N_{f(R_h(s))}(\phi_{h,y})$, but the proper choice should also involve the probability distribution of the possible outcomes ($f$-values), which we denote by $P$. Finally, our ansatz for the proper distribution over $f(R_h(s))$ is:
-# $$ \rho_{h,s} := N_{f(R_h(s))}\left(N_{f(R_h(s))}(\phi_{h,y}) P\right)\,. $$
+# We have an interesting distribution in $N_{f(R_h(s))}(\phi_{h})$, but the proper choice should also involve the probability distribution of the possible outcomes ($f$-values), which we denote by $P$. Finally, our ansatz for the proper distribution over $f(R_h(s))$ is:
+# $$ \rho_{h,s} := N_{f(R_h(s))}\left(N_{f(R_h(s))}(\phi_{h}) P\right)\,. $$
 # With this our choice of metric becomes:
-# $$ \forall h \in H,\, s \subseteq h, \quad g_h(s) := \mathbb E^{\rho_{h,s}}_{\xi \in f(R_h(s))} \big(\mathrm{sgn}(\xi - f(h)) \big)\,.$$
+# $$ \forall h \in H,\, s \subseteq h, \quad g_h(s) := \mathbb E^{\rho_{h,s}}_{\xi \in f(R_h(s))} \big(\xi - f(h) \big)\,.$$
 # 
 # In the following we implement this metric and call it `base_score`.
 
@@ -411,12 +421,12 @@ def base_score(hand, to_roll=[], diag=False):
     size = prospect.shape[0]
     current_weight = phi(hand.score().rank_fine())
     weights = np.vectorize(phi)(np.vectorize(lambda x: x.rank_fine())(prospect['Score'])) / current_weight
-    negative_exponent = 2 # loss is more heavily oppressed than win is promoted
-    weights = weights ** np.vectorize(lambda x: x if x>0 else negative_exponent*x)(prospect['Improvement'])
+    weights = weights ** prospect['Improvement']
     weights /= sum(weights)
     nu_weights = weights * prospect['Probability']
     nu_weights /= sum(nu_weights)
     possible_scores = np.vectorize(lambda x: x.rank_fine())(prospect['Score'])
+    current_score = hand.score().rank_fine()
     
     if(diag):
         #print(DataFrame(weights, index=possible_scores))
@@ -434,7 +444,7 @@ def base_score(hand, to_roll=[], diag=False):
         
         plt.show()
         
-    return sum(prospect['Improvement']  * nu_weights)
+    return sum(nu_weights * (possible_scores - current_score))
 
 
 # Example of how the scoring works for a random hand and a random subset to roll. The black line in the plots is at the position corresponding to the $f$-value of the current hand (prior to rolling the dices in $s$).
@@ -477,19 +487,14 @@ def second_choices():
 
 # "greedy_choice" is the function that takes in a "Hand" object as input and outputs the subset
 # (as a list of positions) that maximizes the metric defined in the last section.
-def greedy_choice(hand):
+def greedy_choice(hand, choices=second_choices()):
     assert(type(hand) == Hand and len(hand.pattern) == 5)
     
-    choices = second_choices()
     scored_choices = [[choice, base_score(hand, choice)] for choice in choices]
     options = DataFrame(scored_choices, columns=['To Roll', 'Score'])
     options = options.sort_values('Score', ascending=False)
     
     return options.loc[options['Score'].idxmax()]['To Roll']
-# One exemplary case where the greedy choice differs from the optimum choice is the following:
-# my hand = 54361, opponent's hand = 44225
-# optimum choice = [0, 1, 2, 4] with p_loss_max = .69
-# greedy choice = [3, 4] with p_loss_max: 0.76
 
 
 # # Computing Losses
@@ -533,7 +538,7 @@ if(__name__ == '__main__'):
     sample_size = 200
     n_bins = int(sample_size/10)
     rolls = second_choices()
-    p_loss_distro = [(lambda x: p_loss_max(x, greedy_choice(x), roll(), rolls))(roll()) for i in range(sample_size)]
+    p_loss_distro = [(lambda x: p_loss_max(x, greedy_choice(x, choices=rolls), roll(), rolls))(roll()) for i in range(sample_size)]
     plt.hist(p_loss_distro, bins=n_bins, range=(0,1))
     plt.xlabel('Maximum Probability of Loss')
     plt.ylabel('Frequency')
@@ -580,6 +585,8 @@ if(__name__ == '__main__'):
     # two lines with two length 5 strings containing numbers only representing dices.
     hand_my = roll() # Replace with the player's hand, example: Hand('51342').
     hand_op = roll() # Replace with the opponent's hand, example: Hand('34323').
+    #hand_my = Hand('26126')
+    #hand_op = Hand('22363')
     print('My hand: ' + str(hand_my) + ', Opponent\'s hand: ' + str(hand_op))
     
     base = greedy_choice(hand_my)
