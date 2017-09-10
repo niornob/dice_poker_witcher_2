@@ -47,9 +47,9 @@ def show_capital(capital):
 	print('You have ' + Fore.GREEN + Style.BRIGHT + str(capital) + Style.RESET_ALL + ' ' + unit_s(capital) + ' to spare.')
 
 def show_hands(hand_p, hand_c):
-	print('      Your hand: ' + checkered(hand_p))
-	print('================================')
-	print('Computer\'s hand: ' + checkered(hand_c))
+	print('        Your hand : ' + checkered(hand_p))
+	print('  =================================')
+	print('  Computer\'s hand : ' + checkered(hand_c))
 
 def checkered(s):
 	checkered_s = []
@@ -92,7 +92,7 @@ while True:
 
 	# Round 1 of the game
 
-	print('\n' + Back.GREEN + Fore.BLACK + '---------- Round 1 ----------' + Style.RESET_ALL + '\n')
+	print('\n ' + Back.GREEN + Fore.BLACK + '------------- Round 1 -------------' + Style.RESET_ALL + '\n')
 	sleep(delay)
 	print(Fore.GREEN + '<<Round 1 betting begins>>')
 
@@ -128,7 +128,7 @@ while True:
 	# Round 2 of the game.
 
 	sleep(delay)
-	print('\n' + Back.GREEN + Fore.BLACK + '---------- Round 2 ----------' + Style.RESET_ALL + '\n')
+	print('\n ' + Back.GREEN + Fore.BLACK + '------------- Round 2 -------------' + Style.RESET_ALL + '\n')
 
 	show_capital(capital)
 
@@ -175,6 +175,7 @@ while True:
 						break
 					else:
 						print('Invalid input, please try again...')
+						sleep(delay)
 						continue
 				if lost:
 					continue
@@ -229,7 +230,7 @@ while True:
 	# Evaluate scores and settle bets
 
 	sleep(delay)
-	print('\n' + Fore.BLACK + Back.GREEN + '---------- Results ----------' + Style.RESET_ALL + '\n')
+	print('\n ' + Fore.BLACK + Back.GREEN + '------------- Results -------------' + Style.RESET_ALL + '\n')
 	
 	state_p, value_p = evaluate(hand_p)
 	state_c, value_c = evaluate(hand_c)
