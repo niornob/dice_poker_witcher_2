@@ -1,6 +1,6 @@
 from colorama import init, Fore, Back, Style
 init(autoreset=True)
-print(Fore.GREEN + 'Initializing...')
+print(Fore.GREEN + 'Initializing, please wait...')
 
 import dice
 import random
@@ -47,9 +47,9 @@ def show_capital(capital):
 	print('You have ' + Fore.GREEN + Style.BRIGHT + str(capital) + Style.RESET_ALL + ' ' + unit_s(capital) + ' to spare.')
 
 def show_hands(hand_p, hand_c):
-	print('      Your hand: ' + checkered(hand_p.pattern))
+	print('      Your hand: ' + checkered(hand_p))
 	print('================================')
-	print('Computer\'s hand: ' + checkered(hand_c.pattern))
+	print('Computer\'s hand: ' + checkered(hand_c))
 
 def checkered(s):
 	checkered_s = []
@@ -66,6 +66,10 @@ def checkered(s):
 	return ''.join(checkered_s)
 
 delay = 0.5
+
+def evaluate(hand):
+	occupants, core = dice.decon(hand)
+	return dice.evaluate(occupants, core)
 
 # Game procedure
 
@@ -88,7 +92,7 @@ while True:
 
 	# Round 1 of the game
 
-	print(Back.GREEN + Fore.BLACK + '\n---------- Round 1 ----------\n')
+	print('\n' + Back.GREEN + Fore.BLACK + '---------- Round 1 ----------' + Style.RESET_ALL + '\n')
 	sleep(delay)
 	print(Fore.GREEN + '<<Round 1 betting begins>>')
 
@@ -124,7 +128,7 @@ while True:
 	# Round 2 of the game.
 
 	sleep(delay)
-	print(Back.GREEN + Fore.BLACK + '\n---------- Round 2 ----------\n')
+	print('\n' + Back.GREEN + Fore.BLACK + '---------- Round 2 ----------' + Style.RESET_ALL + '\n')
 
 	show_capital(capital)
 
@@ -140,18 +144,11 @@ while True:
 		capital -= bet_raise
 		pool += 2 * bet_raise
 
-	# Find greedy choice for computer (round 2)
+	# Find the optimum move for computer and raise bet if potentially profitable for computer (round 2)
 		
-	to_roll_c = dice.greedy_choice(hand_c)
+	opt_c = dice.optimize(hand_c, hand_p)
+	to_roll_c, p_loss_c = opt_c['Roll'], opt_c['P_loss']
 
-	# Compute possible loss for computer and raise bet if potentially profitable for computer (round 2)
-	
-	p_loss_c = dice.p_loss_max(hand_c, to_roll_c, hand_p)
-	if p_loss_c > 0.8:
-		print(Style.DIM + Fore.GREEN + 'Please wait, this step can take a minute or two.')
-		opt_roll_c = dice.optimize(hand_c, hand_p) # If greedy choice is bad ( > 75% chance of lossing) use true optimizer
-		to_roll_c = opt_roll_c['Roll']
-		p_loss_c = opt_roll_c['P_loss']
 	#print('Maximum probability of winning: ' + str(p_loss_c))
 
 	if capital > 0:
@@ -163,15 +160,24 @@ while True:
 		
 			if to_raise_c > 0:
 				sleep(delay)
-				print('Computer has raised the bet by ' + Fore.GREEN + Style.BRIGHT + str(to_raise_c) + Style.RESET_ALL + ' units.')
-				lion = input('Are you willing to match? Saying \'n\' means forfeiting your current bet (y/n): ').lower()
-				if lion == 'n':
-					print('You chicken! You have ' + Back.RED + Fore.WHITE + Style.BRIGHT + 'LOST' + Style.RESET_ALL + '.')
-					show_capital(capital)
+				while True:
+					lost = True
+					print('Computer has raised the bet by ' + Fore.GREEN + Style.BRIGHT + str(to_raise_c) + Style.RESET_ALL + ' units.')
+					lion = input('Are you willing to match? Saying \'n\' means forfeiting your current bet (y/n): ').lower()
+					if lion == 'n':
+						print('You chicken! You have ' + Back.RED + Fore.WHITE + Style.BRIGHT + 'LOST' + Style.RESET_ALL + '.')
+						show_capital(capital)
+						break
+					elif lion == 'y':
+						lost = False
+						capital -= to_raise_c
+						pool += 2 * to_raise_c
+						break
+					else:
+						print('Invalid input, please try again...')
+						continue
+				if lost:
 					continue
-				elif lion == 'y':
-					capital -= to_raise_c
-					pool += 2 * to_raise_c
 
 	sleep(delay)
 	print(Fore.GREEN + '<<Round 2 betting ends>>')
@@ -202,20 +208,20 @@ while True:
 	# Roll dices for player (round 2)
 
 	new_dices = [str(random.randint(1,6)) for i in range(len(to_roll_p))]
-	hand_temp = [c for c in hand_p.pattern]
+	hand_temp = [c for c in hand_p]
 	for i in range(len(to_roll_p)):
 		hand_temp[to_roll_p[i]] = new_dices[i]
-	hand_p.pattern = ''.join(hand_temp)
+	hand_p = ''.join(hand_temp)
 
 	# Roll dices for computer (round 2)
 	
 	sleep(delay)
 	print('Computer is rolling: ' + ''.join([str(i+1) for i in to_roll_c]) + '\n')
 	new_dices = [str(random.randint(1,6)) for i in range(len(to_roll_c))]
-	hand_temp = [c for c in hand_c.pattern]
+	hand_temp = [c for c in hand_c]
 	for i in range(len(to_roll_c)):
 		hand_temp[to_roll_c[i]] = new_dices[i]
-	hand_c.pattern = ''.join(hand_temp)
+	hand_c = ''.join(hand_temp)
 	
 	sleep(delay)
 	show_hands(hand_p, hand_c)
@@ -223,15 +229,16 @@ while True:
 	# Evaluate scores and settle bets
 
 	sleep(delay)
-	print(Fore.BLACK + Back.GREEN + '\n---------- Results ----------\n')
+	print('\n' + Fore.BLACK + Back.GREEN + '---------- Results ----------' + Style.RESET_ALL + '\n')
 	
-	score_p = hand_p.score()
-	score_c = hand_c.score()
+	state_p, value_p = evaluate(hand_p)
+	state_c, value_c = evaluate(hand_c)
 	sleep(delay)
-	print('      Your score: ' + str(score_p))
-	print('Computer\'s score: ' + str(score_c))
+	print('      Your score: ' + state_p + ' (Rank: ' + str(dice.state_rank[state_p]) + ', Sum: ' + str(value_p) + ')')
+	print('Computer\'s score: ' + state_c + ' (Rank: ' + str(dice.state_rank[state_c]) + ', Sum: ' + str(value_c) + ')')
 	
 	sleep(delay)
+	score_p, score_c = dice.rank_f[hand_p], dice.rank_f[hand_c]
 	if score_p > score_c:
 		print('You have ' + Fore.RED + Style.BRIGHT + 'WON' + Style.RESET_ALL + '.')
 		capital += pool
